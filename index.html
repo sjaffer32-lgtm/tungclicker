@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lemonade Empire - Incremental Idle</title>
+  <style>
+    :root {
+      --bg-color: #1a1a1a;
+      --panel-bg: #2d2d2d;
+      --card-bg: #383838;
+      --primary: #f1c40f;
+      --primary-dark: #f39c12;
+      --accent: #2ecc71;
+      --prestige: #e74c3c;
+      --text: #f5f5f5;
+      --text-muted: #aaa;
+      --border: #444;
+    }
+
+    /* Light Theme Overrides */
+    body.light-theme {
+      --bg-color: #fef9e7;
+      --panel-bg: #ffffff;
+      --card-bg: #f5f5f5;
+      --text: #2c3e50;
+      --text-muted: #666;
+      --border: #e0e0e0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+      user-select: none;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      color: var(--primary-dark);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .dashboard {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      background: var(--panel-bg);
+      padding: 12px 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      text-align: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .theme-toggle-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .stat-box h2 {
+      font-size: 1.6rem;
+      color: var(--primary-dark);
+    }
+
+    .stat-box p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .main-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      max-width: 1100px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .left-panel {
+      flex: 1;
+      min-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .click-area {
+      background: var(--panel-bg);
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lemon-btn {
+      background: var(--primary);
+      border: 4px solid var(--primary-dark);
+      border-radius: 50%;
+      width: 150px;
+      height: 150px;
+      font-size: 4.5rem;
+      cursor: pointer;
+      box-shadow: 0 8px 0 var(--primary-dark), 0 0 20px rgba(241, 196, 15, 0.2);
+      transition: transform 0.05s, box-shadow 0.05s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 15px;
+    }
+
+    .lemon-btn:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 var(--primary-dark);
+    }
+
+    .upgrades-panel {
+      background: var(--panel-bg);
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .upgrades-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tech-card {
+      background: var(--card-bg);
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .tech-card:hover { border-color: var(--primary-dark); }
+    .tech-card.purchased { opacity: 0.4; pointer-events: none; border-color: #888; }
+
+    .right-panel {
+      flex: 1.5;
+      min-width: 340px;
+      background: var(--panel-bg);
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      max-height: 650px;
+    }
+
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .bulk-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .bulk-btn.active {
+      background: var(--primary);
+      color: #000;
+      font-weight: bold;
+    }
+
+    .buildings-list {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .building-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .building-info h4 { font-size: 0.95rem; color: var(--primary-dark); }
+    .building-info p { font-size: 0.75rem; color: var(--text-muted); }
+
+    .buy-btn {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      min-width: 100px;
+      text-align: right;
+    }
+
+    .buy-btn:disabled {
+      background-color: #888;
+      color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .prestige-box {
+      margin-top: 15px;
+      background: rgba(231, 76, 60, 0.1);
+      border: 1px solid var(--prestige);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .prestige-btn {
+      background: var(--prestige);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .prestige-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .golden-lemon {
+      position: absolute;
+      font-size: 2.5rem;
+      cursor: pointer;
+      animation: float 2s infinite ease-in-out alternate;
+      z-index: 100;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0px) rotate(0deg); }
+      100% { transform: translateY(-10px) rotate(10deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🍋 Lemonade Empire</h1>
+    <p>Build an empire from a single lemon stand.</p>
+  </header>
+
+  <div class="dashboard">
+    <div class="stat-box">
+      <h2 id="cash-display">$0</h2>
+      <p>Cash</p>
+    </div>
+    <div class="stat-box">
+      <h2 id="cps-display">$0/sec</h2>
+      <p>Passive Income</p>
+    </div>
+    <div class="stat-box">
+      <h2 id="lemons-display">0</h2>
+      <p>Golden Lemons (+<span id="multiplier-display">0</span>% Boost)</p>
+    </div>
+    <button class="theme-toggle-btn" id="theme-btn">🌙 Dark Mode</button>
+  </div>
+
+  <div class="main-layout">
+    <div class="left-panel">
+      <div class="click-area" id="click-area">
+        <p>Squeeze Lemons!</p>
+        <button class="lemon-btn" id="lemon-btn">🍋</button>
+      </div>
+
+      <div class="upgrades-panel">
+        <h3>Upgrades (Multipliers)</h3>
+        <div class="upgrades-grid" id="upgrades-grid"></div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="controls-bar">
+        <h3>Buildings</h3>
+        <div>
+          <span>Buy: </span>
+          <button class="bulk-btn active" onclick="setBulk(1)">x1</button>
+          <button class="bulk-btn" onclick="setBulk(10)">x10</button>
+          <button class="bulk-btn" onclick="setBulk(100)">x100</button>
+        </div>
+      </div>
+      <div class="buildings-list" id="buildings-list"></div>
+
+      <div class="prestige-box">
+        <h4>Golden Lemon Prestige</h4>
+        <p>Reset all cash and buildings to earn Golden Lemons (+10% permanent income boost each).</p>
+        <p><small>Requires $10 Billion cash to unlock.</small></p>
+        <button class="prestige-btn" id="prestige-btn" disabled>Ascend (0 Lemons)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let cash = 0;
+    let goldenLemons = 0;
+    let clickPower = 1;
+    let clickMultiplier = 1;
+    let globalMultiplier = 1;
+    let buyAmount = 1;
+
+    // Numbers Formatter
+    function formatNum(num) {
+      if (num >= 1e12) return (num / 1e12).toFixed(2) + ' T';
+      if (num >= 1e9) return (num / 1e9).toFixed(2) + ' B';
+      if (num >= 1e6) return (num / 1e6).toFixed(2) + ' M';
+      if (num >= 1e3) return (num / 1e3).toFixed(2) + ' K';
+      return Math.floor(num).toLocaleString();
+    }
+
+    // Buildings Data
+    const buildings = [
+      { id: 'b1', name: 'Manual Squeezer', cost: 15, cps: 0.5, count: 0 },
+      { id: 'b2', name: 'Neighborhood Kid', cost: 100, cps: 4, count: 0 },
+      { id: 'b3', name: 'Lemonade Stand', cost: 1100, cps: 32, count: 0 },
+      { id: 'b4', name: 'Juice Cart', cost: 12000, cps: 260, count: 0 },
+      { id: 'b5', name: 'Food Truck', cost: 130000, cps: 1400, count: 0 },
+      { id: 'b6', name: 'Storefront', cost: 1.4e6, cps: 7800, count: 0 },
+      { id: 'b7', name: 'Citrus Factory', cost: 2e7, cps: 44000, count: 0 },
+      { id: 'b8', name: 'Orchard Plantation', cost: 3.3e8, cps: 260000, count: 0 },
+      { id: 'b9', name: 'National Franchise', cost: 5.1e9, cps: 1.6e6, count: 0 },
+      { id: 'b10', name: 'Global Beverage Corp', cost: 7.5e10, cps: 1e7, count: 0 },
+      { id: 'b11', name: 'Automated Hydro-Farm', cost: 1e12, cps: 6.5e7, count: 0 },
+      { id: 'b12', name: 'Orbital Solar Juicer', cost: 1.4e13, cps: 4.3e8, count: 0 },
+      { id: 'b13', name: 'Quantum Synthesizer', cost: 1.7e14, cps: 2.9e9, count: 0 },
+      { id: 'b14', name: 'Dimension Portal', cost: 2.1e15, cps: 2.1e10, count: 0 },
+      { id: 'b15', name: 'Citrus Galaxy Core', cost: 3.1e16, cps: 1.5e11, count: 0 }
+    ];
+
+    // Upgrades Shop Data
+    const techUpgrades = [
+      { id: 'u1', name: 'Reinforced Grips', cost: 100, bought: false, type: 'click', val: 2, desc: '2x Click Power' },
+      { id: 'u2', name: 'Sugar Rush', cost: 500, bought: false, type: 'click', val: 2, desc: '2x Click Power' },
+      { id: 'u3', name: 'Efficient Pumps', cost: 2000, bought: false, type: 'global', val: 2, desc: '2x All Production' },
+      { id: 'u4', name: 'Titanium Press', cost: 50000, bought: false, type: 'click', val: 5, desc: '5x Click Power' },
+      { id: 'u5', name: 'Automated Logistics', cost: 5e6, bought: false, type: 'global', val: 2, desc: '2x All Production' },
+      { id: 'u6', name: 'Genetic Lemons', cost: 5e8, bought: false, type: 'global', val: 3, desc: '3x All Production' },
+      { id: 'u7', name: 'Quantum Squeezing', cost: 1e11, bought: false, type: 'click', val: 10, desc: '10x Click Power' },
+      { id: 'u8', name: 'Sub-Light Transports', cost: 1e13, bought: false, type: 'global', val: 4, desc: '4x All Production' }
+    ];
+
+    // Theme Switcher Logic
+    const themeBtn = document.getElementById('theme-btn');
+
+    function toggleTheme() {
+      document.body.classList.toggle('light-theme');
+      const isLight = document.body.classList.contains('light-theme');
+      themeBtn.innerText = isLight ? '☀️ Light Mode' : '🌙 Dark Mode';
+      localStorage.setItem('lemonadeTheme', isLight ? 'light' : 'dark');
+    }
+
+    themeBtn.onclick = toggleTheme;
+
+    if (localStorage.getItem('lemonadeTheme') === 'light') {
+      document.body.classList.add('light-theme');
+      themeBtn.innerText = '☀️ Light Mode';
+    }
+
+    // Calculate CPS & Click Power
+    function getBaseCPS() {
+      return buildings.reduce((total, b) => total + (b.cps * b.count), 0);
+    }
+
+    function getCPS() {
+      const prestigeBoost = 1 + (goldenLemons * 0.10);
+      return getBaseCPS() * globalMultiplier * prestigeBoost;
+    }
+
+    function getClickPower() {
+      const prestigeBoost = 1 + (goldenLemons * 0.10);
+      return (1 + (getBaseCPS() * 0.02)) * clickMultiplier * prestigeBoost;
+    }
+
+    // UI Updates
+    function updateUI() {
+      document.getElementById('cash-display').innerText = '$' + formatNum(cash);
+      document.getElementById('cps-display').innerText = '$' + formatNum(getCPS()) + '/sec';
+      document.getElementById('lemons-display').innerText = goldenLemons;
+      document.getElementById('multiplier-display').innerText = (goldenLemons * 10);
+
+      // Render Buildings
+      const list = document.getElementById('buildings-list');
+      list.innerHTML = '';
+      buildings.forEach(b => {
+        let costForBulk = 0;
+        let tempCost = b.cost;
+        for(let i = 0; i < buyAmount; i++) {
+          costForBulk += Math.floor(tempCost * Math.pow(1.15, b.count + i));
+        }
+
+        const card = document.createElement('div');
+        card.className = 'building-card';
+        card.innerHTML = `
+          <div class="building-info">
+            <h4>${b.name} (${b.count})</h4>
+            <p>+$${formatNum(b.cps * globalMultiplier * (1 + goldenLemons * 0.1))}/sec each</p>
+          </div>
+          <button class="buy-btn" ${cash < costForBulk ? 'disabled' : ''} onclick="buyBuilding('${b.id}')">
+            $${formatNum(costForBulk)}
+          </button>
+        `;
+        list.appendChild(card);
+      });
+
+      // Render Upgrades
+      const grid = document.getElementById('upgrades-grid');
+      grid.innerHTML = '';
+      techUpgrades.forEach(u => {
+        const card = document.createElement('div');
+        card.className = `tech-card ${u.bought ? 'purchased' : ''}`;
+        card.innerHTML = `
+          <strong>${u.name}</strong><br>
+          <small>${u.desc}</small><br>
+          <small><strong>$${formatNum(u.cost)}</strong></small>
+        `;
+        if(!u.bought) {
+          card.onclick = () => buyUpgrade(u.id);
+        }
+        grid.appendChild(card);
+      });
+
+      // Prestige Button
+      const earnedLemons = Math.floor(Math.pow(cash / 1e10, 0.5));
+      const pBtn = document.getElementById('prestige-btn');
+      if(cash >= 1e10) {
+        pBtn.disabled = false;
+        pBtn.innerText = `Ascend (+${earnedLemons} Lemons)`;
+      } else {
+        pBtn.disabled = true;
+        pBtn.innerText = `Ascend (0 Lemons)`;
+      }
+    }
+
+    // Actions
+    function setBulk(amount) {
+      buyAmount = amount;
+      document.querySelectorAll('.bulk-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      updateUI();
+    }
+
+    function buyBuilding(id) {
+      const b = buildings.find(item => item.id === id);
+      let totalCost = 0;
+      for(let i = 0; i < buyAmount; i++) {
+        totalCost += Math.floor(b.cost * Math.pow(1.15, b.count + i));
+      }
+
+      if(cash >= totalCost) {
+        cash -= totalCost;
+        b.count += buyAmount;
+        updateUI();
+      }
+    }
+
+    function buyUpgrade(id) {
+      const u = techUpgrades.find(item => item.id === id);
+      if(cash >= u.cost && !u.bought) {
+        cash -= u.cost;
+        u.bought = true;
+        if(u.type === 'click') clickMultiplier *= u.val;
+        if(u.type === 'global') globalMultiplier *= u.val;
+        updateUI();
+      }
+    }
+
+    // Floating Click Particles
+    function spawnParticle(x, y, amount) {
+      const particle = document.createElement('div');
+      particle.innerText = '+$' + formatNum(amount);
+      
+      particle.style.position = 'fixed';
+      particle.style.left = (x - 20) + 'px';
+      particle.style.top = (y - 20) + 'px';
+      particle.style.color = '#f1c40f';
+      particle.style.fontWeight = 'bold';
+      particle.style.fontSize = '1.2rem';
+      particle.style.pointerEvents = 'none';
+      particle.style.textShadow = '0 2px 4px rgba(0,0,0,0.8)';
+      particle.style.zIndex = '1000';
+      particle.style.transition = 'transform 0.8s ease-out, opacity 0.8s ease-out';
+      
+      document.body.appendChild(particle);
+
+      requestAnimationFrame(() => {
+        particle.style.transform = 'translateY(-40px)';
+        particle.style.opacity = '0';
+      });
+
+      setTimeout(() => {
+        particle.remove();
+      }, 800);
+    }
+
+    // Handle Lemon Click with Particles
+    document.getElementById('lemon-btn').onclick = (e) => {
+      const earned = getClickPower();
+      cash += earned;
+      spawnParticle(e.clientX, e.clientY, earned);
+      updateUI();
+    };
+
+    document.getElementById('prestige-btn').onclick = () => {
+      const earnedLemons = Math.floor(Math.pow(cash / 1e10, 0.5));
+      if(earnedLemons > 0 && confirm(`Ascend now to gain ${earnedLemons} Golden Lemons? This will reset cash and buildings!`)) {
+        goldenLemons += earnedLemons;
+        cash = 0;
+        buildings.forEach(b => b.count = 0);
+        updateUI();
+      }
+    };
+
+    // Golden Lemon Event
+    function spawnGoldenLemon() {
+      const lemon = document.createElement('div');
+      lemon.className = 'golden-lemon';
+      lemon.innerText = '🍋✨';
+      lemon.style.left = Math.random() * 80 + '%';
+      lemon.style.top = Math.random() * 80 + '%';
+      
+      lemon.onclick = (e) => {
+        const reward = Math.max(100, getCPS() * 30);
+        cash += reward;
+        spawnParticle(e.clientX, e.clientY, reward);
+        lemon.remove();
+        updateUI();
+      };
+
+      document.getElementById('click-area').appendChild(lemon);
+      setTimeout(() => { if(lemon.parentNode) lemon.remove(); }, 8000);
+    }
+
+    setInterval(() => {
+      if(Math.random() < 0.3) spawnGoldenLemon();
+    }, 30000);
+
+    // Main Game Loop
+    setInterval(() => {
+      cash += getCPS() / 10;
+      updateUI();
+    }, 100);
+
+    updateUI();
+  </script>
+</body>
+</html>
